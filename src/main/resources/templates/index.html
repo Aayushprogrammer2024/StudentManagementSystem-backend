@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student CRUD</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to right, #667eea, #764ba2);
+            display: flex;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            width: 520px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+
+        button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px 3px;
+            font-size: 14px;
+        }
+
+        .save-btn { background-color: #4CAF50; color: white; width: 100%; }
+        .search-btn { background-color: #17a2b8; color: white; width: 100%; }
+        .edit-btn { background-color: #ffc107; }
+        .delete-btn { background-color: #f44336; color: white; }
+        .pagination-btn { background-color: #6c757d; color: white; }
+
+        ul { list-style: none; padding: 0; }
+
+        li {
+            background: #f4f4f4;
+            margin: 8px 0;
+            padding: 10px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .button-group {
+            display: flex;
+        }
+
+        .center {
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        hr { margin: 20px 0; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <h2>Add / Update Student</h2>
+
+    <input type="hidden" id="studentId">
+    <input type="text" id="name" placeholder="Enter name">
+    <input type="email" id="email" placeholder="Enter email">
+    <button class="save-btn" onclick="saveStudent()">Save</button>
+
+    <hr>
+
+    <h2>Search Students</h2>
+    <input type="text" id="searchInput" placeholder="Search by name">
+    <button class="search-btn" onclick="searchStudents()">Search</button>
+
+    <hr>
+
+    <h2>Students List</h2>
+    <ul id="studentList"></ul>
+
+    <div class="center">
+        <button class="pagination-btn" onclick="previousPage()">Previous</button>
+        <span id="pageInfo"></span>
+        <button class="pagination-btn" onclick="nextPage()">Next</button>
+    </div>
+
+</div>
+
+<script>
+
+let currentPage = 0;
+const pageSize = 2;
+let totalPages = 0;
+let searchMode = false;
+let searchValue = "";
+
+function loadStudents() {
+
+    let url;
+
+    if (searchMode && searchValue !== "") {
+        url = `http://localhost:8080/students/search?name=${searchValue}&page=${currentPage}&size=${pageSize}`;
+    } else {
+        url = `http://localhost:8080/students?page=${currentPage}&size=${pageSize}`;
+    }
+
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+
+            const list = document.getElementById("studentList");
+            list.innerHTML = "";
+
+            totalPages = data.totalPages;
+
+            document.getElementById("pageInfo").innerText =
+                `Page ${currentPage + 1} of ${totalPages}`;
+
+            data.content.forEach(student => {
+                const li = document.createElement("li");
+
+                li.innerHTML = `
+                    <span>${student.name} - ${student.email}</span>
+                    <div class="button-group">
+                        <button class="edit-btn"
+                            onclick="editStudent(${student.id}, \`${student.name}\`, \`${student.email}\`)">
+                            Edit
+                        </button>
+                        <button class="delete-btn"
+                            onclick="deleteStudent(${student.id})">
+                            Delete
+                        </button>
+                    </div>
+                `;
+
+                list.appendChild(li);
+            });
+        });
+}
+
+function searchStudents() {
+    searchValue = document.getElementById("searchInput").value;
+    searchMode = true;
+    currentPage = 0;
+    loadStudents();
+}
+
+function nextPage() {
+    if (currentPage < totalPages - 1) {
+        currentPage++;
+        loadStudents();
+    }
+}
+
+function previousPage() {
+    if (currentPage > 0) {
+        currentPage--;
+        loadStudents();
+    }
+}
+
+function saveStudent() {
+    const id = document.getElementById("studentId").value;
+    const name = document.getElementById("name").value;
+    const email = document.getElementById("email").value;
+
+    if (id) {
+        fetch(`http://localhost:8080/students/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, email })
+        }).then(() => {
+            resetForm();
+            loadStudents();
+        });
+    } else {
+        fetch("http://localhost:8080/students", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, email })
+        }).then(() => {
+            resetForm();
+            loadStudents();
+        });
+    }
+}
+
+function deleteStudent(id) {
+    fetch(`http://localhost:8080/students/${id}`, {
+        method: "DELETE"
+    }).then(() => loadStudents());
+}
+
+function editStudent(id, name, email) {
+    document.getElementById("studentId").value = id;
+    document.getElementById("name").value = name;
+    document.getElementById("email").value = email;
+}
+
+function resetForm() {
+    document.getElementById("studentId").value = "";
+    document.getElementById("name").value = "";
+    document.getElementById("email").value = "";
+}
+
+window.onload = loadStudents;
+
+</script>
+
+</body>
+</html>
